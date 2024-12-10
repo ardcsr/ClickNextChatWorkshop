@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-time Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .chat-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+    }
+    .messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+    }
+    .message {
+      margin-bottom: 10px;
+    }
+    .message strong {
+      color: #333;
+    }
+    .message p {
+      margin: 0;
+    }
+    .message.me {
+      text-align: right;
+    }
+    .form-container {
+      display: flex;
+      gap: 10px;
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <h1>Real-time Chat</h1>
+    <div class="messages" id="messages"></div>
+    <div class="form-container">
+      <input type="text" id="username" placeholder="Your name" required>
+      <input type="text" id="message" placeholder="Type a message..." required>
+      <button id="sendButton">Send</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const messagesContainer = document.getElementById('messages');
+    const usernameInput = document.getElementById('username');
+    const messageInput = document.getElementById('message');
+    const sendButton = document.getElementById('sendButton');
+
+    // 📌 โหลดข้อความที่เคยบันทึกจากฐานข้อมูล
+    fetch('/messages')
+      .then(response => response.json())
+      .then(messages => {
+        messages.forEach(message => addMessageToDOM(message));
+      });
+
+    // 📌 เมื่อกดปุ่ม "Send"
+    sendButton.addEventListener('click', () => {
+      const username = usernameInput.value;
+      const text = messageInput.value;
+      if (!username || !text) return alert('Please enter a username and message');
+
+      const message = { username, text };
+      socket.emit('sendMessage', message);
+      messageInput.value = ''; // ล้างข้อความ
+    });
+
+    // 📌 รับข้อความใหม่จากเซิร์ฟเวอร์
+    socket.on('newMessage', (message) => {
+      addMessageToDOM(message);
+    });
+
+    // 📌 ฟังก์ชันเพื่อเพิ่มข้อความลงใน DOM
+    function addMessageToDOM(message) {
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('message');
+      messageElement.innerHTML = `<strong>${message.username}:</strong> <p>${message.text}</p>`;
+      messagesContainer.appendChild(messageElement);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight; // เลื่อนลงไปที่ข้อความล่าสุด
+    }
+  </script>
+</body>
+</html>
