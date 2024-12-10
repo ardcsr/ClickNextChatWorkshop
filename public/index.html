@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat Room</title>
+</head>
+<body>
+  <h1>Real-time Chat</h1>
+  <button id="logoutButton">Logout</button>
+
+  <div>
+    <input id="room" placeholder="Enter room name" />
+    <button id="joinRoom">Join Room</button>
+  </div>
+
+  <div id="chat"></div>
+
+  <textarea id="message" placeholder="Type a message"></textarea>
+  <button id="sendMessage">Send</button>
+
+  <!-- เพิ่ม input สำหรับเลือกรูปภาพ -->
+  <input type="file" id="imageInput" />
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please log in first.');
+      window.location.href = '/login.html';
+    }
+
+    const socket = io('http://localhost:3000', { 
+      auth: { token } 
+    });
+
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = '/login.html';
+    });
+
+    document.getElementById('joinRoom').addEventListener('click', () => {
+      const room = document.getElementById('room').value;
+      socket.emit('joinRoom', { room });
+    });
+
+    document.getElementById('sendMessage').addEventListener('click', () => {
+      const message = document.getElementById('message').value;
+      const room = document.getElementById('room').value;
+      
+      // ตรวจสอบว่าได้เลือกรูปภาพหรือไม่
+      const imageInput = document.getElementById('imageInput');
+      let imageBase64 = '';
+      if (imageInput.files && imageInput.files[0]) {
+        const file = imageInput.files[0];
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          imageBase64 = reader.result; // แปลงเป็น Base64 string
+          socket.emit('sendMessage', { text: message, room, image: imageBase64 });
+        };
+        reader.readAsDataURL(file); // อ่านไฟล์เป็น Base64
+      } else {
+        socket.emit('sendMessage', { text: message, room });
+      }
+
+      document.getElementById('message').value = '';
+      imageInput.value = ''; // เคลียร์ input image
+    });
+
+    socket.on('newMessage', (message) => {
+      const chat = document.getElementById('chat');
+      const msgEl = document.createElement('div');
+      msgEl.innerHTML = `<strong>${message.username}:</strong> ${message.text}`;
+      
+      // หากมีรูปภาพ ให้แสดงรูปภาพในแชท
+      if (message.image) {
+        const imgEl = document.createElement('img');
+        imgEl.src = message.image; // ใช้ Base64 image
+        imgEl.style.maxWidth = '300px';
+        imgEl.style.marginTop = '10px';
+        msgEl.appendChild(imgEl);
+      }
+
+      chat.appendChild(msgEl);
+    });
+  </script>
+</body>
+</html>
